@@ -13,7 +13,11 @@ It demonstrates:
 
 ## Quick Start
 
-Run everything from `examples/bridgeboard/`.
+Ensure Rust is installed: https://rust-lang.org/
+
+install the cli-tool `vsr` for quick eon-config based REST API prototyping by running a command `cargo install vsra`
+
+Run everything from project root:
 
 ```bash
 export JWT_SECRET="$(openssl rand -hex 32)"
