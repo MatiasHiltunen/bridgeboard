@@ -43,7 +43,7 @@ vsr build bridgeboard.eon --force
 
 > Run the build process during development using flag: "vsr build bridgeboard.eon --keep-build-dir" for faster rebuilds
 
-> There is also `vsr build --release` which optimizes the resulting binary for performance and size aimilar (basically the cargo build --release in the background)
+> There is also `vsr build --release` which optimizes the resulting binary for performance and size (basically the cargo build --release in the background)
 
 Open `http://127.0.0.1:8080`.
 
