@@ -1,0 +1,7 @@
+.emails
+.vsr-build
+certs
+test-results
+var
+.env
+bridgeboard*
