@@ -908,10 +908,18 @@ async function loadAdminContentView() {
   }
 
   await ensureOrganizationOptions();
-  const requests = await fetchRequests({ limit: 16, sort: "created_at", order: "desc" });
+  const [requests, organizations, interests, topics] = await Promise.all([
+    fetchRequests({ limit: 16, sort: "created_at", order: "desc" }),
+    fetchOrganizations({}, { limit: 100, sort: "name", order: "asc" }),
+    fetchInterests({}, { limit: 200, sort: "desired_start_on", order: "asc" }),
+    fetchTopics({}, { limit: 200, sort: "application_deadline", order: "asc" }),
+  ]);
   return {
     kind: "admin-content",
     requests: requests.items || [],
+    organizations: organizations.items || [],
+    interests: interests.items || [],
+    topics: topics.items || [],
   };
 }
 
@@ -2077,19 +2085,19 @@ function renderAdminContentView(view) {
         stats: [
           {
             label: "Organizations",
-            value: state.organizationOptions.length,
-            detail: "Available for reuse in forms",
+            value: view.organizations.length,
+            detail: "Published partner records",
           },
           {
-            label: "Requests visible",
-            value: view.requests.length,
-            detail: "Latest items in the review queue",
+            label: "Interest signals",
+            value: view.interests.length,
+            detail: "Editable near-term opportunity signals",
             tone: "cool",
           },
           {
-            label: "Admin role",
-            value: "Enabled",
-            detail: "Full curation access is active",
+            label: "Thesis topics",
+            value: view.topics.length,
+            detail: "Editable thesis-ready opportunities",
             tone: "warm",
           },
         ],
@@ -2153,6 +2161,57 @@ function renderAdminContentView(view) {
             <button type="submit">Create thesis topic</button>
           </form>
         </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Edit organizations</p>
+            <h2>Update or remove partner profiles</h2>
+          </div>
+          <span class="badge">${view.organizations.length} records</span>
+        </div>
+        <div class="card-grid">
+          ${renderCollection(
+            view.organizations,
+            (organization) => renderAdminOrganizationCard(organization),
+            "No organizations are available to edit.",
+          )}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Edit interest signals</p>
+            <h2>Refine near-term partner intent</h2>
+          </div>
+          <span class="badge">${view.interests.length} records</span>
+        </div>
+        <div class="card-grid">
+          ${renderCollection(
+            view.interests,
+            (interest) => renderAdminInterestCard(interest),
+            "No interest signals are available to edit.",
+          )}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Edit thesis topics</p>
+            <h2>Maintain published opportunity details</h2>
+          </div>
+          <span class="badge">${view.topics.length} records</span>
+        </div>
+        <div class="card-grid topics">
+          ${renderCollection(
+            view.topics,
+            (topic) => renderAdminThesisTopicCard(topic),
+            "No thesis topics are available to edit.",
+          )}
+        </div>
       </section>
 
       <section class="panel">
@@ -2456,6 +2515,104 @@ function renderRequestCard(request) {
   `;
 }
 
+function renderAdminOrganizationCard(organization) {
+  return `
+    <article class="admin-card">
+      <div class="card-top">
+        <div>
+          <p class="eyebrow">Organization record</p>
+          <h3>${escapeHtml(organization.name)}</h3>
+        </div>
+        <span class="badge">${escapeHtml(organization.country)}</span>
+      </div>
+      <div class="form-grid two">
+        <label><span>Slug</span><input id="adminOrganizationSlug-${escapeAttribute(organization.id)}" type="text" value="${escapeAttribute(organization.slug)}"></label>
+        <label><span>Name</span><input id="adminOrganizationName-${escapeAttribute(organization.id)}" type="text" value="${escapeAttribute(organization.name)}"></label>
+        <label><span>Country</span><input id="adminOrganizationCountry-${escapeAttribute(organization.id)}" type="text" value="${escapeAttribute(organization.country)}"></label>
+        <label><span>City</span><input id="adminOrganizationCity-${escapeAttribute(organization.id)}" type="text" value="${escapeAttribute(organization.city)}"></label>
+        <label><span>Website</span><input id="adminOrganizationWebsite-${escapeAttribute(organization.id)}" type="url" value="${escapeAttribute(organization.website_url)}"></label>
+        <label><span>Contact email</span><input id="adminOrganizationContact-${escapeAttribute(organization.id)}" type="email" value="${escapeAttribute(organization.contact_email)}"></label>
+      </div>
+      <label><span>Collaboration stage</span><input id="adminOrganizationStage-${escapeAttribute(organization.id)}" type="text" value="${escapeAttribute(organization.collaboration_stage)}"></label>
+      <label><span>Summary</span><textarea id="adminOrganizationSummary-${escapeAttribute(organization.id)}">${escapeHtml(organization.summary)}</textarea></label>
+      <div class="request-actions">
+        <button type="button" data-action="admin-organization-save" data-organization-id="${escapeAttribute(organization.id)}">Save changes</button>
+        <a class="button ghost" href="/organizations/${encodeURIComponent(organization.slug)}" data-link>Open public page</a>
+        <button class="danger" type="button" data-action="admin-organization-delete" data-organization-id="${escapeAttribute(organization.id)}" data-organization-name="${escapeAttribute(organization.name)}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminInterestCard(interest) {
+  const organization = organizationById(interest.organization_id);
+  return `
+    <article class="admin-card">
+      <div class="card-top">
+        <div>
+          <p class="eyebrow">Interest signal</p>
+          <h3>${escapeHtml(interest.title)}</h3>
+        </div>
+        <span class="badge warning">${escapeHtml(interest.work_mode)}</span>
+      </div>
+      <div class="form-grid two">
+        <label>
+          <span>Organization</span>
+          <select id="adminInterestOrganization-${escapeAttribute(interest.id)}">
+            ${renderOrganizationOptions(String(interest.organization_id))}
+          </select>
+        </label>
+        <label><span>Work mode</span><input id="adminInterestWorkMode-${escapeAttribute(interest.id)}" type="text" value="${escapeAttribute(interest.work_mode)}"></label>
+        <label><span>Title</span><input id="adminInterestTitle-${escapeAttribute(interest.id)}" type="text" value="${escapeAttribute(interest.title)}"></label>
+        <label><span>Desired start</span><input id="adminInterestDesiredStart-${escapeAttribute(interest.id)}" type="date" value="${escapeAttribute(interest.desired_start_on || "")}"></label>
+      </div>
+      <label><span>Summary</span><textarea id="adminInterestSummary-${escapeAttribute(interest.id)}">${escapeHtml(interest.summary)}</textarea></label>
+      <div class="request-actions">
+        <button type="button" data-action="admin-interest-save" data-interest-id="${escapeAttribute(interest.id)}">Save changes</button>
+        ${
+          organization
+            ? `<a class="button ghost" href="/organizations/${encodeURIComponent(organization.slug)}" data-link>Open organization</a>`
+            : ""
+        }
+        <button class="danger" type="button" data-action="admin-interest-delete" data-interest-id="${escapeAttribute(interest.id)}" data-interest-title="${escapeAttribute(interest.title)}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminThesisTopicCard(topic) {
+  return `
+    <article class="admin-card">
+      <div class="card-top">
+        <div>
+          <p class="eyebrow">Thesis topic</p>
+          <h3>${escapeHtml(topic.title)}</h3>
+        </div>
+        <span class="badge">${escapeHtml(formatDate(topic.application_deadline) || "Open")}</span>
+      </div>
+      <div class="form-grid two">
+        <label>
+          <span>Organization</span>
+          <select id="adminTopicOrganization-${escapeAttribute(topic.id)}">
+            ${renderOrganizationOptions(String(topic.organization_id))}
+          </select>
+        </label>
+        <label><span>Discipline</span><input id="adminTopicDiscipline-${escapeAttribute(topic.id)}" type="text" value="${escapeAttribute(topic.discipline)}"></label>
+        <label><span>Title</span><input id="adminTopicTitle-${escapeAttribute(topic.id)}" type="text" value="${escapeAttribute(topic.title)}"></label>
+        <label><span>Location</span><input id="adminTopicLocation-${escapeAttribute(topic.id)}" type="text" value="${escapeAttribute(topic.location)}"></label>
+        <label><span>Contact email</span><input id="adminTopicContact-${escapeAttribute(topic.id)}" type="email" value="${escapeAttribute(topic.contact_email)}"></label>
+        <label><span>Application deadline</span><input id="adminTopicDeadline-${escapeAttribute(topic.id)}" type="date" value="${escapeAttribute(topic.application_deadline || "")}"></label>
+      </div>
+      <label><span>Summary</span><textarea id="adminTopicSummary-${escapeAttribute(topic.id)}">${escapeHtml(topic.summary)}</textarea></label>
+      <div class="request-actions">
+        <button type="button" data-action="admin-topic-save" data-topic-id="${escapeAttribute(topic.id)}">Save changes</button>
+        <a class="button ghost" href="/topics/${encodeURIComponent(String(topic.id))}" data-link>Open public page</a>
+        <button class="danger" type="button" data-action="admin-topic-delete" data-topic-id="${escapeAttribute(topic.id)}" data-topic-title="${escapeAttribute(topic.title)}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderManagedUserCard(user) {
   const isCurrentUser = Number(user.id) === Number(state.account?.id);
   return `
@@ -2566,6 +2723,33 @@ async function handleClick(event) {
         break;
       case "load-demo":
         await loadDemoDataset();
+        break;
+      case "admin-organization-save":
+        await saveOrganizationRecord(actionTarget.dataset.organizationId);
+        break;
+      case "admin-organization-delete":
+        await deleteOrganizationRecord(
+          actionTarget.dataset.organizationId,
+          actionTarget.dataset.organizationName,
+        );
+        break;
+      case "admin-interest-save":
+        await saveInterestRecord(actionTarget.dataset.interestId);
+        break;
+      case "admin-interest-delete":
+        await deleteInterestRecord(
+          actionTarget.dataset.interestId,
+          actionTarget.dataset.interestTitle,
+        );
+        break;
+      case "admin-topic-save":
+        await saveThesisTopicRecord(actionTarget.dataset.topicId);
+        break;
+      case "admin-topic-delete":
+        await deleteThesisTopicRecord(
+          actionTarget.dataset.topicId,
+          actionTarget.dataset.topicTitle,
+        );
         break;
       case "admin-user-save":
         await saveManagedUser(actionTarget.dataset.userId);
@@ -2808,6 +2992,132 @@ async function createThesisTopic(form) {
     body: JSON.stringify(payload),
   });
   setNotice("Thesis topic created.", "success");
+  await reloadCurrentRoute();
+}
+
+function readAdminFieldValue(id) {
+  const element = document.getElementById(id);
+  if (!(element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement)) {
+    throw new Error("Admin editor field could not be found.");
+  }
+  return element.value;
+}
+
+async function saveOrganizationRecord(organizationId) {
+  const payload = {
+    slug: readAdminFieldValue(`adminOrganizationSlug-${organizationId}`).trim(),
+    name: readAdminFieldValue(`adminOrganizationName-${organizationId}`).trim(),
+    country: readAdminFieldValue(`adminOrganizationCountry-${organizationId}`).trim(),
+    city: readAdminFieldValue(`adminOrganizationCity-${organizationId}`).trim(),
+    website_url: readAdminFieldValue(`adminOrganizationWebsite-${organizationId}`).trim(),
+    contact_email: readAdminFieldValue(`adminOrganizationContact-${organizationId}`).trim(),
+    collaboration_stage: readAdminFieldValue(`adminOrganizationStage-${organizationId}`).trim(),
+    summary: readAdminFieldValue(`adminOrganizationSummary-${organizationId}`).trim(),
+  };
+
+  if (Object.values(payload).some((value) => !value)) {
+    throw new Error("All organization fields are required.");
+  }
+
+  await apiFetch(`/organization/${encodeURIComponent(organizationId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  invalidateOrganizationOptions();
+  setNotice("Organization updated.", "success");
+  await reloadCurrentRoute();
+}
+
+async function deleteOrganizationRecord(organizationId, organizationName = "this organization") {
+  if (
+    !window.confirm(
+      `Delete ${organizationName}? Remove related interest signals, thesis topics, or requests first if the API rejects the delete.`,
+    )
+  ) {
+    return;
+  }
+
+  await apiFetch(`/organization/${encodeURIComponent(organizationId)}`, {
+    method: "DELETE",
+  });
+  invalidateOrganizationOptions();
+  setNotice("Organization deleted.", "success");
+  await reloadCurrentRoute();
+}
+
+async function saveInterestRecord(interestId) {
+  const payload = {
+    organization_id: Number(readAdminFieldValue(`adminInterestOrganization-${interestId}`)),
+    title: readAdminFieldValue(`adminInterestTitle-${interestId}`).trim(),
+    work_mode: readAdminFieldValue(`adminInterestWorkMode-${interestId}`).trim(),
+    desired_start_on:
+      readAdminFieldValue(`adminInterestDesiredStart-${interestId}`) || null,
+    summary: readAdminFieldValue(`adminInterestSummary-${interestId}`).trim(),
+  };
+
+  if (!payload.organization_id || !payload.title || !payload.work_mode || !payload.summary) {
+    throw new Error("All interest fields except the start date are required.");
+  }
+
+  await apiFetch(`/interest/${encodeURIComponent(interestId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  setNotice("Interest signal updated.", "success");
+  await reloadCurrentRoute();
+}
+
+async function deleteInterestRecord(interestId, interestTitle = "this interest signal") {
+  if (!window.confirm(`Delete ${interestTitle}?`)) {
+    return;
+  }
+
+  await apiFetch(`/interest/${encodeURIComponent(interestId)}`, {
+    method: "DELETE",
+  });
+  setNotice("Interest signal deleted.", "success");
+  await reloadCurrentRoute();
+}
+
+async function saveThesisTopicRecord(topicId) {
+  const payload = {
+    organization_id: Number(readAdminFieldValue(`adminTopicOrganization-${topicId}`)),
+    title: readAdminFieldValue(`adminTopicTitle-${topicId}`).trim(),
+    discipline: readAdminFieldValue(`adminTopicDiscipline-${topicId}`).trim(),
+    location: readAdminFieldValue(`adminTopicLocation-${topicId}`).trim(),
+    contact_email: readAdminFieldValue(`adminTopicContact-${topicId}`).trim(),
+    application_deadline: readAdminFieldValue(`adminTopicDeadline-${topicId}`) || null,
+    summary: readAdminFieldValue(`adminTopicSummary-${topicId}`).trim(),
+  };
+
+  if (
+    !payload.organization_id ||
+    !payload.title ||
+    !payload.discipline ||
+    !payload.location ||
+    !payload.contact_email ||
+    !payload.summary
+  ) {
+    throw new Error("All thesis topic fields except the deadline are required.");
+  }
+
+  await apiFetch(`/thesis_topic/${encodeURIComponent(topicId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  setNotice("Thesis topic updated.", "success");
+  await reloadCurrentRoute();
+}
+
+async function deleteThesisTopicRecord(topicId, topicTitle = "this thesis topic") {
+  if (!window.confirm(`Delete ${topicTitle}?`)) {
+    return;
+  }
+
+  await apiFetch(`/thesis_topic/${encodeURIComponent(topicId)}`, {
+    method: "DELETE",
+  });
+  setNotice("Thesis topic deleted.", "success");
   await reloadCurrentRoute();
 }
 
