@@ -1,0 +1,338 @@
+module: "bridgeboard"
+logging: {
+	filter_env: "APP_LOG"
+	default_filter: "info,sqlx=warn"
+	timestamp: Millis
+}
+tls: {
+    cert_path: "certs/dev-cert.pem"
+    key_path: "certs/dev-key.pem"
+}
+security: {
+	requests: {
+		json_max_bytes: 262144
+	}
+	trusted_proxies: {
+		proxies: ["127.0.0.1", "::1"]
+		proxies_env: "TRUSTED_PROXIES"
+	}
+	rate_limits: {
+		login: {
+			requests: 10
+			window_seconds: 60
+		}
+		register: {
+			requests: 5
+			window_seconds: 300
+		}
+	}
+	headers: {
+		frame_options: Deny
+		content_type_options: true
+		referrer_policy: StrictOriginWhenCrossOrigin
+	}
+	auth: {
+		issuer: "bridgeboard"
+		audience: "bridgeboard_clients"
+		access_token_ttl_seconds: 3600
+		require_email_verification: true
+		session_cookie: {
+			secure: false
+			same_site: Strict
+		}
+		email: {
+			from_email: "noreply@example.com"
+			from_name: "Bridgeboard"
+			public_base_url: "http://127.0.0.1:8082"
+			provider: {
+				kind: Resend
+				api_key_env: "RESEND_API_KEY"
+			}
+		}
+		portal: {
+			path: "/auth/portal"
+			title: "Bridgeboard Account"
+		}
+		admin_dashboard: {
+			path: "/auth/admin"
+			title: "Bridgeboard Admin"
+		}
+	}
+}
+static: {
+	mounts: [
+		{
+			mount: "/"
+			dir: "public"
+			mode: Spa
+			index_file: "index.html"
+			fallback_file: "index.html"
+			cache: NoStore
+		}
+	]
+}
+resources: {
+	Organization: {
+		list: {
+			default_limit: 24
+			max_limit: 100
+		}
+		roles: {
+			create: "admin"
+			update: "admin"
+			delete: "admin"
+		}
+		fields: {
+			id: {
+				type: I64
+				id: true
+			}
+			slug: {
+				type: String
+				validate: {
+					min_length: 3
+					max_length: 48
+				}
+			}
+			name: {
+				type: String
+				validate: {
+					min_length: 3
+					max_length: 120
+				}
+			}
+			country: {
+				type: String
+				validate: {
+					min_length: 2
+					max_length: 64
+				}
+			}
+			city: {
+				type: String
+				validate: {
+					min_length: 2
+					max_length: 64
+				}
+			}
+			website_url: {
+				type: String
+				validate: {
+					min_length: 8
+					max_length: 200
+				}
+			}
+			contact_email: {
+				type: String
+				validate: {
+					min_length: 5
+					max_length: 160
+				}
+			}
+			collaboration_stage: {
+				type: String
+				validate: {
+					min_length: 3
+					max_length: 64
+				}
+			}
+			summary: {
+				type: String
+				validate: {
+					min_length: 24
+					max_length: 800
+				}
+			}
+			created_at: DateTime
+			updated_at: DateTime
+		}
+	}
+	Interest: {
+		list: {
+			default_limit: 48
+			max_limit: 200
+		}
+		roles: {
+			create: "admin"
+			update: "admin"
+			delete: "admin"
+		}
+		fields: {
+			id: {
+				type: I64
+				id: true
+			}
+			organization_id: {
+				type: I64
+				relation: {
+					references: "organization.id"
+					nested_route: true
+				}
+			}
+			title: {
+				type: String
+				validate: {
+					min_length: 4
+					max_length: 140
+				}
+			}
+			work_mode: {
+				type: String
+				validate: {
+					min_length: 4
+					max_length: 48
+				}
+			}
+			summary: {
+				type: String
+				validate: {
+					min_length: 24
+					max_length: 800
+				}
+			}
+			desired_start_on: {
+				type: Date
+				nullable: true
+			}
+			created_at: DateTime
+			updated_at: DateTime
+		}
+	}
+	ThesisTopic: {
+		list: {
+			default_limit: 48
+			max_limit: 200
+		}
+		roles: {
+			create: "admin"
+			update: "admin"
+			delete: "admin"
+		}
+		fields: {
+			id: {
+				type: I64
+				id: true
+			}
+			organization_id: {
+				type: I64
+				relation: {
+					references: "organization.id"
+					nested_route: true
+				}
+			}
+			title: {
+				type: String
+				validate: {
+					min_length: 5
+					max_length: 160
+				}
+			}
+			discipline: {
+				type: String
+				validate: {
+					min_length: 3
+					max_length: 80
+				}
+			}
+			location: {
+				type: String
+				validate: {
+					min_length: 2
+					max_length: 80
+				}
+			}
+			contact_email: {
+				type: String
+				validate: {
+					min_length: 5
+					max_length: 160
+				}
+			}
+			summary: {
+				type: String
+				validate: {
+					min_length: 24
+					max_length: 900
+				}
+			}
+			application_deadline: {
+				type: Date
+				nullable: true
+			}
+			created_at: DateTime
+			updated_at: DateTime
+		}
+	}
+	CollaborationRequest: {
+		list: {
+			default_limit: 24
+			max_limit: 100
+		}
+		roles: {
+			read: "user"
+			create: "user"
+			update: "user"
+			delete: "user"
+		}
+		policies: {
+			admin_bypass: true
+			read: {
+				kind: Owner
+				field: "requester_user_id"
+			}
+			create: {
+				kind: SetOwner
+				field: "requester_user_id"
+			}
+			update: {
+				kind: Owner
+				field: "requester_user_id"
+			}
+			delete: {
+				kind: Owner
+				field: "requester_user_id"
+			}
+		}
+		fields: {
+			id: {
+				type: I64
+				id: true
+			}
+			organization_id: {
+				type: I64
+				relation: {
+					references: "organization.id"
+					nested_route: true
+				}
+			}
+			requester_user_id: I64
+			title: {
+				type: String
+				validate: {
+					min_length: 5
+					max_length: 160
+				}
+			}
+			message: {
+				type: String
+				validate: {
+					min_length: 32
+					max_length: 1600
+				}
+			}
+			status: {
+				type: String
+				validate: {
+					min_length: 4
+					max_length: 32
+				}
+			}
+			preferred_start_on: {
+				type: Date
+				nullable: true
+			}
+			created_at: DateTime
+			updated_at: DateTime
+		}
+	}
+}

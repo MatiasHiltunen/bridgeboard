@@ -4,4 +4,5 @@ certs
 test-results
 var
 .env
-bridgeboard*
+bridgeboard
+*.bundle
