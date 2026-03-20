@@ -2,7 +2,7 @@
 
 # Bridgeboard
 
-Bridgeboard is a cross-border collaboration platform prototype for education and industry, developed in NordicBridge InterregAurora NPA -project. The API
+Bridgeboard is a cross-border collaboration platform prototype for education and industry, developed in [Nordic Bridge project](https://www.interreg-npa.eu/projects/nordic-bridge/). The API
 is defined entirely in [bridgeboard.eon](./bridgeboard.eon), and the same generated server also
 serves the browser client from [`public/`](./public/).
 
