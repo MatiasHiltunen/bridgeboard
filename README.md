@@ -15,7 +15,11 @@ It demonstrates:
 
 Ensure Rust is installed: https://rust-lang.org/
 
-install the cli-tool `vsr` for quick eon-config based REST API prototyping by running a command `cargo install vsra`
+install the cli-tool `vsr` for quick eon-config based REST API prototyping by running a command:
+
+```sh
+cargo install vsra`
+```
 
 Run everything from project root:
 
