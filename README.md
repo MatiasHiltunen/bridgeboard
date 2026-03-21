@@ -6,7 +6,7 @@ Bridgeboard is a cross-border collaboration platform prototype for education and
 is defined entirely in [bridgeboard.eon](./bridgeboard.eon), and the same generated server also
 serves the browser client from [`public/`](./public/).
 
-
+_The main purpose of the Bridgeboard was to demonstrate AI based quick prototyping and the stack was composed by Codex gpt-5.4 roughly in an hour (plus couple more prompts to add more features)._
 
 It demonstrates:
 
